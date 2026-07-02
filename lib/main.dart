@@ -1,5 +1,3 @@
-import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
@@ -11,12 +9,6 @@ import 'settings_screen.dart';
 
 // Global reference to the server
 LocalLLMServer? globalServer;
-
-String generateAuthToken() {
-  final random = Random.secure();
-  final values = List<int>.generate(32, (i) => random.nextInt(256));
-  return base64UrlEncode(values).replaceAll('=', '');
-}
 
 @pragma('vm:entry-point')
 void startCallback() {
@@ -49,13 +41,6 @@ void main() async {
   );
 
   final prefs = await SharedPreferences.getInstance();
-  
-  // Ensure auth token exists
-  String? authToken = prefs.getString('auth_token');
-  if (authToken == null) {
-    authToken = generateAuthToken();
-    await prefs.setString('auth_token', authToken);
-  }
 
   // Restore previous model if any
   final lastUrl = prefs.getString('active_model_url');
@@ -74,7 +59,7 @@ void main() async {
   // Start server if it was enabled, irrespective of model download status
   final serverEnabled = prefs.getBool('server_enabled') ?? true;
   if (serverEnabled) {
-    globalServer = LocalLLMServer(port: 8080, authToken: authToken);
+    globalServer = LocalLLMServer(port: 8080);
     globalServer!.start().then((_) async {
       FlutterForegroundTask.init(
         androidNotificationOptions: AndroidNotificationOptions(

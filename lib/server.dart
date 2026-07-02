@@ -9,21 +9,14 @@ import 'package:shelf_router/shelf_router.dart';
 class LocalLLMServer {
   final int port;
   final String host;
-  final String authToken;
   HttpServer? _server;
   
-  LocalLLMServer({this.port = 8080, this.host = '127.0.0.1', required this.authToken});
+  LocalLLMServer({this.port = 8080, this.host = '127.0.0.1'});
   
   Future<void> start() async {
     final router = Router();
 
     router.post('/v1/chat/completions', (Request request) async {
-      // 1. Basic Auth check
-      final authHeader = request.headers['authorization'];
-      if (authHeader != 'Bearer $authToken') {
-        return Response.forbidden(jsonEncode({"error": {"message": "Invalid or missing Bearer token"}}), headers: {'Content-Type': 'application/json'});
-      }
-
       Map<String, dynamic> json;
       try {
         final payload = await request.readAsString();

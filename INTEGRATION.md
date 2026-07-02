@@ -5,7 +5,6 @@ The Gemma Local Server provides an OpenAI-compatible HTTP endpoint (`/v1/chat/co
 ## Prerequisites
 1. Ensure the server is toggled **ON** in the Settings tab.
 2. Ensure a model is actively downloaded and loaded via the Catalog tab.
-3. Copy the **API Bearer Token** from the Settings tab.
 
 ## Endpoint Details
 * **Base URL:** `http://127.0.0.1:8080`
@@ -13,7 +12,6 @@ The Gemma Local Server provides an OpenAI-compatible HTTP endpoint (`/v1/chat/co
 * **Method:** `POST`
 * **Headers:** 
   * `Content-Type: application/json`
-  * `Authorization: Bearer <YOUR_TOKEN>`
 
 ## 1. Non-Streaming Example
 
@@ -21,7 +19,6 @@ The Gemma Local Server provides an OpenAI-compatible HTTP endpoint (`/v1/chat/co
 ```bash
 curl http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
   -d '{
     "messages": [
       {"role": "user", "content": "What is Retrieval-Augmented Generation?"}
@@ -61,7 +58,6 @@ curl http://127.0.0.1:8080/v1/chat/completions \
 ```bash
 curl http://127.0.0.1:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
   -d '{
     "messages": [
       {"role": "user", "content": "Explain RAG step by step."}
@@ -83,7 +79,6 @@ data: [DONE]
 
 ## Error Handling
 The server provides graceful error responses. For instance:
-- **401 Unauthorized:** Invalid or missing Bearer token.
 - **400 Bad Request:** Malformed JSON body or empty `messages` array.
 - **500 Internal Server Error:** Returned if the model is still downloading or if an out-of-memory exception occurs during inference. 
 ```json

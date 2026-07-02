@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,7 +13,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _serverEnabled = true;
   String _activeModel = 'None';
-  String _authToken = '';
   bool _isClearing = false;
 
   @override
@@ -28,7 +26,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _serverEnabled = prefs.getBool('server_enabled') ?? true;
       _activeModel = prefs.getString('active_model_url') ?? 'None';
-      _authToken = prefs.getString('auth_token') ?? '';
     });
   }
 
@@ -41,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (value) {
       if (globalServer == null) {
-        globalServer = LocalLLMServer(port: 8080, authToken: _authToken);
+        globalServer = LocalLLMServer(port: 8080);
       }
       await globalServer!.start();
       
@@ -126,20 +123,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           value: _serverEnabled,
           onChanged: _toggleServer,
-        ),
-        Divider(),
-        ListTile(
-          title: Text('API Bearer Token'),
-          subtitle: Text(_authToken),
-          trailing: IconButton(
-            icon: Icon(Icons.copy),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: _authToken));
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Token copied to clipboard!')),
-              );
-            },
-          ),
         ),
         Divider(),
         ListTile(
