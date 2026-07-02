@@ -14,6 +14,7 @@ class LocalLLMServer {
   final String host;
   HttpServer? _server;
   final Set<String> _failedModels = {};
+  bool _isBusy = false;
   
   LocalLLMServer({this.port = 8080, this.host = '0.0.0.0'});
   
@@ -29,11 +30,17 @@ class LocalLLMServer {
         return Response.badRequest(body: jsonEncode({"error": {"message": "Malformed JSON request body: $e"}}), headers: {'Content-Type': 'application/json'});
       }
 
+      if (_isBusy) {
+        return Response(503, body: jsonEncode({"error": {"message": "Model is busy processing another request or loading."}}), headers: {'Content-Type': 'application/json'});
+      }
+      _isBusy = true;
+
       try {
         final messages = json['messages'] as List<dynamic>? ?? [];
         final stream = json['stream'] == true;
         
         if (messages.isEmpty) {
+          _isBusy = false;
           return Response.badRequest(body: jsonEncode({"error": {"message": "Empty messages array"}}), headers: {'Content-Type': 'application/json'});
         }
         
@@ -47,6 +54,7 @@ class LocalLLMServer {
           final matches = catalog.where((m) => m.type == 'Generation' && (m.filename.toLowerCase().contains(requestedModelStr.toLowerCase()) || m.repo.toLowerCase().contains(requestedModelStr.toLowerCase())));
           
           if (matches.isEmpty) {
+            _isBusy = false;
             return Response.notFound(jsonEncode({"error": {"message": "model '$requestedModelStr' not found, download it in Beak first"}}), headers: {'Content-Type': 'application/json'});
           }
           
@@ -56,6 +64,7 @@ class LocalLLMServer {
           if (matchedModel.downloadUrl != currentActiveUrl) {
             final installed = await FlutterGemma.listInstalledModels();
             if (!installed.contains(matchedModel.filename)) {
+              _isBusy = false;
               return Response.notFound(jsonEncode({"error": {"message": "model '$requestedModelStr' not found, download it in Beak first"}}), headers: {'Content-Type': 'application/json'});
             }
             
@@ -63,6 +72,7 @@ class LocalLLMServer {
             final path = '${dir.path}/${matchedModel.filename}';
             
             if (_failedModels.contains(path)) {
+              _isBusy = false;
               return Response.internalServerError(
                 body: jsonEncode({"error": {"message": "Model previously failed to initialize. Please check model format or device compatibility."}}),
                 headers: {'Content-Type': 'application/json'}
@@ -70,6 +80,10 @@ class LocalLLMServer {
             }
             
             try {
+              try {
+                final oldModel = await FlutterGemma.getActiveModel();
+                await oldModel.close();
+              } catch (_) {}
               var builder = FlutterGemma.installModel(
                 modelType: ModelType.gemma4,
                 fileType: ModelFileType.litertlm,
@@ -78,6 +92,7 @@ class LocalLLMServer {
               await prefs.setString('active_model_url', matchedModel.downloadUrl);
             } catch (e) {
               _failedModels.add(path);
+              _isBusy = false;
               return Response.internalServerError(body: jsonEncode({"error": {"message": "Failed to switch model: $e"}}), headers: {'Content-Type': 'application/json'});
             }
           }
@@ -112,6 +127,7 @@ class LocalLLMServer {
             temperature: 0.4,
           );
         } catch (e) {
+          _isBusy = false;
           return Response.internalServerError(body: jsonEncode({"error": {"message": "Model not loaded or still downloading: $e"}}), headers: {'Content-Type': 'application/json'});
         }
         
@@ -152,6 +168,14 @@ class LocalLLMServer {
           
           final controller = StreamController<List<int>>();
           
+          void cleanup() {
+            if (_isBusy) {
+              chat.stopGeneration();
+              _isBusy = false;
+            }
+          }
+          controller.onCancel = cleanup;
+          
           chatStream.listen((response) {
             if (response is TextResponse) {
               final token = response.token.replaceAll('\u2581', ' ');
@@ -186,9 +210,11 @@ class LocalLLMServer {
             };
             controller.add(utf8.encode('data: ${jsonEncode(doneChunk)}\n\ndata: [DONE]\n\n'));
             controller.close();
+            cleanup();
           }, onError: (e) {
             controller.addError(e);
             controller.close();
+            cleanup();
           });
           
           return Response.ok(controller.stream, headers: {
@@ -226,9 +252,11 @@ class LocalLLMServer {
             }
           };
           
+          _isBusy = false;
           return Response.ok(jsonEncode(openaiResponse), headers: {'Content-Type': 'application/json'});
         }
       } catch (e) {
+        _isBusy = false;
         // Catch out of memory or other inference errors gracefully
         return Response.internalServerError(body: jsonEncode({"error": {"message": "Inference error (possibly out of memory): $e"}}), headers: {'Content-Type': 'application/json'});
       }
