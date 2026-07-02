@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 import 'catalog_service.dart';
+import 'beak_theme.dart';
 
 class ModelsScreen extends StatefulWidget {
   @override
@@ -21,6 +22,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
   String _activeEmbeddingUrl = '';
   List<String> _installedModelIds = [];
   double _freeDiskSpaceMB = 0.0;
+  double _totalSpaceMB = 0.0;
   
   Map<String, double> _downloadProgress = {};
   Map<String, String> _downloadStatus = {};
@@ -56,8 +58,10 @@ class _ModelsScreenState extends State<ModelsScreen> {
     }
 
     double freeSpace = 0.0;
+    double totalSpace = 0.0;
     try {
       freeSpace = await DiskSpace.getFreeDiskSpace ?? 0.0;
+      totalSpace = await DiskSpace.getTotalDiskSpace ?? 0.0;
     } catch (e) {
       print('Could not get disk space: $e');
     }
@@ -68,6 +72,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
       _models = models;
       _installedModelIds = validInstalled;
       _freeDiskSpaceMB = freeSpace;
+      _totalSpaceMB = totalSpace;
       _isLoading = false;
     });
   }
@@ -285,12 +290,22 @@ class _ModelsScreenState extends State<ModelsScreen> {
         children: [
         Container(
           padding: EdgeInsets.all(16),
-          color: Colors.grey[200],
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          color: Color(0xFF111111),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Storage Used: ${(totalUsedMB / 1024).toStringAsFixed(2)} GB', style: TextStyle(fontWeight: FontWeight.bold)),
-              Text('Free: ${(_freeDiskSpaceMB / 1024).toStringAsFixed(2)} GB', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Storage Usage', style: TextStyle(fontWeight: FontWeight.bold, color: BeakTheme.primaryText)),
+              SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: _totalSpaceMB > 0 ? totalUsedMB / _totalSpaceMB : 0,
+                backgroundColor: Colors.grey[800],
+                color: BeakTheme.goldLight,
+              ),
+              SizedBox(height: 4),
+              Text(
+                '${(totalUsedMB / 1024).toStringAsFixed(2)} GB used of ${(_totalSpaceMB / 1024).toStringAsFixed(2)} GB total',
+                style: TextStyle(color: BeakTheme.secondaryText, fontSize: 12),
+              ),
             ],
           ),
         ),
@@ -307,9 +322,14 @@ class _ModelsScreenState extends State<ModelsScreen> {
               final isDownloading = status != null && status.contains('Downloading');
 
               return Card(
-                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: isActive ? BorderSide(color: BeakTheme.goldLight.withValues(alpha: 0.5), width: 1) : BorderSide.none,
+                ),
+                color: Color(0xFF161616),
                 child: Padding(
-                  padding: EdgeInsets.all(8),
+                  padding: EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -317,51 +337,65 @@ class _ModelsScreenState extends State<ModelsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(model.filename, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                            child: Text(model.filename, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: BeakTheme.primaryText)),
                           ),
                           if (isActive)
-                            Chip(
-                              label: Text('ACTIVE', style: TextStyle(color: Colors.white, fontSize: 10)),
-                              backgroundColor: Colors.green,
-                              padding: EdgeInsets.zero,
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: BeakTheme.goldGradient,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text('ACTIVE', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold)),
                             )
                           else if (isInstalled)
-                            Chip(
-                              label: Text('INSTALLED', style: TextStyle(color: Colors.white, fontSize: 10)),
-                              backgroundColor: Colors.blueGrey,
-                              padding: EdgeInsets.zero,
-                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[800],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text('INSTALLED', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                            )
                         ],
                       ),
-                      SizedBox(height: 4),
-                      Text('${model.repo}'),
-                      Text('${model.sizeGB.toStringAsFixed(2)} GB - ${model.description}', style: TextStyle(color: Colors.grey[600])),
-                      if (status != null) ...[
-                        SizedBox(height: 8),
-                        Text(status, style: TextStyle(color: Colors.blue)),
-                        if (progress != null && progress > 0 && progress < 100)
-                          LinearProgressIndicator(value: progress / 100),
-                      ],
                       SizedBox(height: 8),
+                      Text('${model.repo}', style: TextStyle(color: BeakTheme.secondaryText)),
+                      Text('${model.sizeGB.toStringAsFixed(2)} GB - ${model.description}', style: TextStyle(color: BeakTheme.secondaryText)),
+                      if (status != null) ...[
+                        SizedBox(height: 12),
+                        Text(status, style: TextStyle(color: BeakTheme.goldLight)),
+                        if (progress != null && progress > 0 && progress < 100)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: BeakTheme.applyGradient(LinearProgressIndicator(value: progress / 100, backgroundColor: Colors.grey[800])),
+                          ),
+                      ],
+                      SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
                           if (isInstalled && !isActive)
                             TextButton.icon(
-                              icon: Icon(Icons.delete, color: Colors.red),
-                              label: Text('DELETE', style: TextStyle(color: Colors.red)),
+                              icon: Icon(Icons.delete, color: Colors.redAccent, size: 18),
+                              label: Text('DELETE', style: TextStyle(color: Colors.redAccent)),
                               onPressed: () => _deleteModel(model),
                             ),
                           if (!isActive)
                             isDownloading
                                 ? TextButton.icon(
-                                    icon: Icon(Icons.cancel, color: Colors.red),
-                                    label: Text('CANCEL', style: TextStyle(color: Colors.red)),
+                                    icon: Icon(Icons.cancel, color: Colors.redAccent, size: 18),
+                                    label: Text('CANCEL', style: TextStyle(color: Colors.redAccent)),
                                     onPressed: () => _cancelDownload(model),
                                   )
                                 : ElevatedButton.icon(
-                                    icon: Icon(isInstalled ? Icons.play_arrow : Icons.download),
-                                    label: Text(isInstalled ? 'LOAD' : 'DOWNLOAD'),
+                                    icon: Icon(isInstalled ? Icons.play_arrow : Icons.download, color: Colors.black, size: 18),
+                                    label: Text(isInstalled ? 'LOAD' : 'DOWNLOAD', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      backgroundColor: BeakTheme.goldLight, // Fallback if no gradient
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                    ),
                                     onPressed: () => _handleModelTap(model),
                                   ),
                         ],

@@ -9,6 +9,7 @@ import 'server.dart';
 import 'models_screen.dart';
 import 'settings_screen.dart';
 import 'chat_screen.dart';
+import 'beak_theme.dart';
 
 // Global reference to the server
 LocalLLMServer? globalServer;
@@ -138,23 +139,26 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(
       theme: ThemeData(
         brightness: Brightness.dark,
-        primaryColor: Colors.white,
-        scaffoldBackgroundColor: Colors.black,
+        scaffoldBackgroundColor: BeakTheme.backgroundBlack,
         cardColor: const Color(0xFF1E1E1E),
         appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.black,
+          backgroundColor: BeakTheme.backgroundBlack,
           elevation: 0,
           iconTheme: IconThemeData(color: Colors.white),
         ),
-        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-          backgroundColor: Colors.black,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.grey,
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          backgroundColor: BeakTheme.backgroundBlack,
+          selectedItemColor: BeakTheme.goldLight,
+          unselectedItemColor: Colors.grey[700],
+        ),
+        textTheme: const TextTheme(
+          bodyMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, height: 1.5),
+          bodyLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w400, height: 1.5),
         ),
         colorScheme: const ColorScheme.dark(
-          primary: Colors.white,
-          secondary: Colors.grey,
-          surface: Colors.black,
+          primary: BeakTheme.goldLight,
+          secondary: BeakTheme.goldDark,
+          surface: BeakTheme.backgroundBlack,
         ),
       ),
       home: Scaffold(
@@ -174,10 +178,22 @@ class _MyAppState extends State<MyApp> {
               _chatKey.currentState?.refreshModels();
             }
           },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
-            BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Catalog'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          items: [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.chat_bubble_outline),
+              activeIcon: BeakTheme.applyGradient(Icon(Icons.chat_bubble)),
+              label: 'Chat',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.grid_view),
+              activeIcon: BeakTheme.applyGradient(Icon(Icons.grid_view)),
+              label: 'Catalog',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.settings_outlined),
+              activeIcon: BeakTheme.applyGradient(Icon(Icons.settings)),
+              label: 'Settings',
+            ),
           ],
         ),
       ),

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'catalog_service.dart';
 import 'chat_service.dart';
+import 'beak_theme.dart';
 
 class ChatScreen extends StatefulWidget {
   ChatScreen({Key? key}) : super(key: key);
@@ -264,37 +265,30 @@ class ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: Colors.white,
-        scaffoldBackgroundColor: Colors.black,
-        cardColor: Color(0xFF1E1E1E),
-        appBarTheme: AppBarTheme(backgroundColor: Colors.black, elevation: 0),
-        colorScheme: ColorScheme.dark(primary: Colors.white, secondary: Colors.grey[400]!),
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: DropdownButton<RemoteModel>(
-            value: _selectedModel,
-            dropdownColor: Colors.grey[900],
-            icon: Icon(Icons.arrow_drop_down, color: Colors.white),
-            underline: SizedBox(),
-            items: _installedModels.map((m) {
-              return DropdownMenuItem<RemoteModel>(
-                value: m,
-                child: Text(m.filename, style: TextStyle(color: Colors.white, fontSize: 14)),
-              );
-            }).toList(),
-            onChanged: (model) {
-              if (model != null && model != _selectedModel) {
-                _switchModel(model);
-              }
-            },
-            hint: Text('Select Model', style: TextStyle(color: Colors.white)),
+    return Scaffold(
+      appBar: AppBar(
+          title: BeakTheme.applyGradient(
+            DropdownButton<RemoteModel>(
+              value: _selectedModel,
+              dropdownColor: Colors.grey[900],
+              icon: Icon(Icons.arrow_drop_down, color: Colors.white),
+              underline: SizedBox(),
+              items: _installedModels.map((m) {
+                return DropdownMenuItem<RemoteModel>(
+                  value: m,
+                  child: Text(m.filename, style: TextStyle(color: Colors.white, fontSize: 16)),
+                );
+              }).toList(),
+              onChanged: (model) {
+                if (model != null && model != _selectedModel) {
+                  _switchModel(model);
+                }
+              },
+              hint: Text('Select Model', style: TextStyle(color: Colors.white)),
+            ),
           ),
           bottom: _isSwitchingModel
-              ? PreferredSize(preferredSize: Size.fromHeight(4.0), child: LinearProgressIndicator(color: Colors.white))
+              ? PreferredSize(preferredSize: Size.fromHeight(4.0), child: BeakTheme.applyGradient(LinearProgressIndicator(color: Colors.white)))
               : null,
         ),
         drawer: Drawer(
@@ -374,63 +368,81 @@ class ChatScreenState extends State<ChatScreen> {
             _buildInputArea(),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildMessageBubble({required String role, required String content}) {
     final isUser = role == 'user';
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 8),
-        padding: EdgeInsets.all(12),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
-        decoration: BoxDecoration(
-          color: isUser ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: isUser ? null : Border.all(color: Colors.white.withValues(alpha: 0.2)),
+    
+    if (!isUser) {
+      // Assistant message: Clean text block, no borders
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+          child: MarkdownBody(
+            data: content,
+            styleSheet: MarkdownStyleSheet(
+              p: TextStyle(color: BeakTheme.primaryText, fontSize: 16, height: 1.6),
+              code: TextStyle(backgroundColor: Color(0xFF111111), color: BeakTheme.goldLight, fontFamily: 'monospace'),
+              codeblockDecoration: BoxDecoration(color: Color(0xFF111111), borderRadius: BorderRadius.circular(8)),
+            ),
+          ),
         ),
-        child: isUser
-            ? Text(content, style: TextStyle(color: Colors.white, fontSize: 16))
-            : MarkdownBody(
-                data: content,
-                styleSheet: MarkdownStyleSheet(
-                  p: TextStyle(color: Colors.grey[300], fontSize: 16),
-                  code: TextStyle(backgroundColor: Colors.black, color: Colors.white, fontFamily: 'monospace'),
-                  codeblockDecoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey[800]!)),
-                ),
-              ),
+      );
+    }
+    
+    // User message: Subtle gold tinted border and background
+    return Align(
+      alignment: Alignment.centerRight,
+      child: Container(
+        margin: EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        decoration: BoxDecoration(
+          color: BeakTheme.goldLight.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: BeakTheme.goldLight.withValues(alpha: 0.2)),
+        ),
+        child: Text(content, style: TextStyle(color: BeakTheme.primaryText, fontSize: 16, height: 1.4)),
       ),
     );
   }
 
   Widget _buildInputArea() {
     return Container(
-      padding: EdgeInsets.all(16),
-      color: Colors.black,
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      color: BeakTheme.backgroundBlack,
       child: Row(
         children: [
           Expanded(
-            child: TextField(
-              controller: _inputController,
-              style: TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                hintStyle: TextStyle(color: Colors.grey),
-                filled: true,
-                fillColor: Colors.grey[900],
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Color(0xFF111111),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: BeakTheme.secondaryText.withValues(alpha: 0.2)),
               ),
-              onSubmitted: (_) => _sendMessage(),
+              child: TextField(
+                controller: _inputController,
+                style: TextStyle(color: BeakTheme.primaryText, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  hintStyle: TextStyle(color: BeakTheme.secondaryText),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                ),
+                onSubmitted: (_) => _sendMessage(),
+              ),
             ),
           ),
-          SizedBox(width: 8),
-          CircleAvatar(
-            backgroundColor: _isGenerating ? Colors.grey : Colors.white,
+          SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: BeakTheme.goldGradient,
+            ),
             child: IconButton(
-              icon: Icon(Icons.send, color: Colors.black),
+              icon: Icon(Icons.send, color: Colors.black, size: 20),
               onPressed: _isGenerating ? null : _sendMessage,
             ),
           ),

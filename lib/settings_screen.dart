@@ -4,6 +4,7 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'server.dart';
 import 'main.dart';
+import 'beak_theme.dart';
 
 class SettingsScreen extends StatefulWidget {
   @override
@@ -124,27 +125,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
         padding: EdgeInsets.all(16),
         children: [
         SwitchListTile(
-          title: Text('Enable Local HTTP Server'),
+          title: Text('Enable Local HTTP Server', style: TextStyle(color: BeakTheme.primaryText)),
           subtitle: Text(
-            _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions, /v1/embeddings' : 'Stopped'
+            _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions, /v1/embeddings' : 'Stopped',
+            style: TextStyle(color: BeakTheme.secondaryText)
           ),
           value: _serverEnabled,
+          activeColor: BeakTheme.goldLight,
           onChanged: _toggleServer,
         ),
-        Divider(),
+        Divider(color: Colors.grey[800]),
         ListTile(
-          title: Text('Current Generation Model'),
-          subtitle: Text(_activeModel.isEmpty || _activeModel == 'None' ? 'None' : _activeModel.split('/').last),
+          title: Text('Current Generation Model', style: TextStyle(color: BeakTheme.primaryText)),
+          subtitle: Text(
+            _activeModel.isEmpty || _activeModel == 'None' ? 'None' : _activeModel.split('/').last,
+            style: TextStyle(color: BeakTheme.goldLight)
+          ),
         ),
         ListTile(
-          title: Text('Current Embedding Model'),
-          subtitle: Text(_activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last),
+          title: Text('Current Embedding Model', style: TextStyle(color: BeakTheme.primaryText)),
+          subtitle: Text(
+            _activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last,
+            style: TextStyle(color: BeakTheme.goldLight)
+          ),
         ),
-        Divider(),
+        Divider(color: Colors.grey[800]),
         ListTile(
-          title: Text('Clear All Models', style: TextStyle(color: Colors.red)),
-          subtitle: Text('Deletes all downloaded models from local storage'),
-          trailing: _isClearing ? CircularProgressIndicator() : Icon(Icons.delete_forever, color: Colors.red),
+          title: Text('Clear All Local Models', style: TextStyle(color: Colors.redAccent)),
+          subtitle: Text('Deletes all downloaded weights to free up space', style: TextStyle(color: BeakTheme.secondaryText)),
+          trailing: _isClearing ? CircularProgressIndicator(color: Colors.redAccent) : Icon(Icons.delete_forever, color: Colors.redAccent),
           onTap: _isClearing ? null : _clearAllModels,
         ),
       ],
