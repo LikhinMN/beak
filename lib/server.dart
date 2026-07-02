@@ -139,6 +139,79 @@ class LocalLLMServer {
       }
     });
 
+    router.post('/v1/embeddings', (Request request) async {
+      Map<String, dynamic> json;
+      try {
+        final payload = await request.readAsString();
+        json = jsonDecode(payload);
+      } catch (e) {
+        return Response.badRequest(
+          body: jsonEncode({"error": {"message": "Invalid JSON payload"}}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      final input = json['input'];
+      if (input == null || (input is! String && input is! List)) {
+        return Response.badRequest(
+          body: jsonEncode({"error": {"message": "'input' field is required and must be a string or array of strings"}}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      List<String> inputs = [];
+      if (input is String) {
+        inputs.add(input);
+      } else {
+        inputs = List<String>.from(input);
+      }
+
+      if (!FlutterGemma.hasActiveEmbedder()) {
+        return Response.internalServerError(
+          body: jsonEncode({"error": {"message": "No active embedding model loaded"}}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+
+      try {
+        final embedder = await FlutterGemma.getActiveEmbedder();
+        final List<Map<String, dynamic>> data = [];
+        
+        for (int i = 0; i < inputs.length; i++) {
+          String text = inputs[i];
+          // Add default task prefix if not present
+          if (!text.startsWith('task:')) {
+            text = 'task: search result | query: $text';
+          }
+          
+          final embedding = await embedder.generateEmbedding(text);
+          data.add({
+            "object": "embedding",
+            "index": i,
+            "embedding": embedding,
+          });
+        }
+
+        return Response.ok(
+          jsonEncode({
+            "object": "list",
+            "data": data,
+            "model": "embeddinggemma-300m",
+            "usage": {
+              "prompt_tokens": 0,
+              "total_tokens": 0
+            }
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
+      } catch (e) {
+        return Response.internalServerError(
+          body: jsonEncode({"error": {"message": "Error generating embedding: $e"}}),
+          headers: {'Content-Type': 'application/json'},
+        );
+      }
+    });
+
     final handler = Pipeline().addMiddleware(logRequests()).addHandler(router.call);
     _server = await shelf_io.serve(handler, host, port);
     print('Server listening on http://${_server!.address.host}:${_server!.port}');
