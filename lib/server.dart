@@ -83,17 +83,62 @@ class LocalLLMServer {
           }
         }
         
+        // Extract system prompt from messages
+        String? systemInstruction;
+        final chatMessages = [];
+        for (final msg in messages) {
+          final role = msg['role']?.toString() ?? 'user';
+          final content = msg['content']?.toString() ?? '';
+          if (role == 'system') {
+            if (content.isNotEmpty) {
+              systemInstruction = systemInstruction == null ? content : '$systemInstruction\n$content';
+            }
+          } else {
+            chatMessages.add(msg);
+          }
+        }
+        
+        // Add explicit system-turn language constraint mitigation
+        final explicitLangInstruction = "Respond only in English unless the user writes in another language.";
+        systemInstruction = systemInstruction == null ? explicitLangInstruction : '$systemInstruction\n$explicitLangInstruction';
+
         // Get the active model and create a chat session
         InferenceChat chat;
         try {
           final model = await FlutterGemma.getActiveModel();
-          chat = await model.createChat();
+          // Lower temperature to ~0.4 as requested
+          chat = await model.createChat(
+            systemInstruction: systemInstruction,
+            temperature: 0.4,
+          );
         } catch (e) {
           return Response.internalServerError(body: jsonEncode({"error": {"message": "Model not loaded or still downloading: $e"}}), headers: {'Content-Type': 'application/json'});
         }
         
+        // --- START RAW PROMPT LOGGING ---
+        final rawPromptBuffer = StringBuffer();
+        if (systemInstruction != null) {
+          // Note: Native engine wraps system messages, this is just an approximation
+          rawPromptBuffer.write('System: $systemInstruction\n\n');
+        }
+        for (final msg in chatMessages) {
+          final content = msg['content']?.toString() ?? '';
+          final role = msg['role']?.toString() ?? 'user';
+          if (content.isNotEmpty) {
+            if (role == 'user') {
+              rawPromptBuffer.write('<start_of_turn>user\n$content<end_of_turn>\n<start_of_turn>model\n');
+            } else {
+              rawPromptBuffer.write('$content<end_of_turn>\n');
+            }
+          }
+        }
+        print('=== RAW PROMPT ===');
+        print(rawPromptBuffer.toString());
+        print('==================');
+        // --- END RAW PROMPT LOGGING ---
+
         // Add all previous messages as context
-        for (final msg in messages) {
+        for (final msg in chatMessages) {
           final content = msg['content']?.toString() ?? '';
           final role = msg['role']?.toString() ?? 'user';
           if (content.isNotEmpty) {
