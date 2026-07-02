@@ -1,5 +1,7 @@
 # Beak 
 
+![Beak Banner](assets/image.png)
+
 Beak is a premium, localized AI interface running strictly on-device using LiteRT inference and Flutter. Featuring an elegant gold-on-black design aesthetic, it runs completely offline while offering dynamic model switching and an OpenAI-compatible REST API for use as a background embedding/LLM backend by external RAG applications.
 
 ## Key Features
