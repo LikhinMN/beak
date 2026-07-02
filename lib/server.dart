@@ -5,6 +5,9 @@ import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:shelf_router/shelf_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'catalog_service.dart';
 
 class LocalLLMServer {
   final int port;
@@ -31,6 +34,44 @@ class LocalLLMServer {
         
         if (messages.isEmpty) {
           return Response.badRequest(body: jsonEncode({"error": {"message": "Empty messages array"}}), headers: {'Content-Type': 'application/json'});
+        }
+        
+        final requestedModelStr = json['model'] as String?;
+        final prefs = await SharedPreferences.getInstance();
+        final currentActiveUrl = prefs.getString('active_model_url') ?? '';
+        String modelResponseName = "gemma-4-E2B-it";
+        
+        if (requestedModelStr != null && requestedModelStr.isNotEmpty) {
+          final catalog = await CatalogService.fetchCatalog();
+          final matches = catalog.where((m) => m.type == 'Generation' && (m.filename.toLowerCase().contains(requestedModelStr.toLowerCase()) || m.repo.toLowerCase().contains(requestedModelStr.toLowerCase())));
+          
+          if (matches.isEmpty) {
+            return Response.notFound(jsonEncode({"error": {"message": "model '$requestedModelStr' not found, download it in Beak first"}}), headers: {'Content-Type': 'application/json'});
+          }
+          
+          final matchedModel = matches.first;
+          modelResponseName = requestedModelStr;
+          
+          if (matchedModel.downloadUrl != currentActiveUrl) {
+            final installed = await FlutterGemma.listInstalledModels();
+            if (!installed.contains(matchedModel.filename)) {
+              return Response.notFound(jsonEncode({"error": {"message": "model '$requestedModelStr' not found, download it in Beak first"}}), headers: {'Content-Type': 'application/json'});
+            }
+            
+            final dir = await getApplicationDocumentsDirectory();
+            final path = '${dir.path}/${matchedModel.filename}';
+            
+            try {
+              var builder = FlutterGemma.installModel(
+                modelType: ModelType.gemma4,
+                fileType: ModelFileType.litertlm,
+              ).fromFile(path);
+              await builder.install();
+              await prefs.setString('active_model_url', matchedModel.downloadUrl);
+            } catch (e) {
+              return Response.internalServerError(body: jsonEncode({"error": {"message": "Failed to switch model: $e"}}), headers: {'Content-Type': 'application/json'});
+            }
+          }
         }
         
         // Get the active model and create a chat session
@@ -64,7 +105,7 @@ class LocalLLMServer {
                 "id": "chatcmpl-local",
                 "object": "chat.completion.chunk",
                 "created": DateTime.now().millisecondsSinceEpoch ~/ 1000,
-                "model": "gemma-4-E2B-it",
+                "model": modelResponseName,
                 "choices": [
                   {
                     "index": 0,
@@ -80,7 +121,7 @@ class LocalLLMServer {
               "id": "chatcmpl-local",
               "object": "chat.completion.chunk",
               "created": DateTime.now().millisecondsSinceEpoch ~/ 1000,
-              "model": "gemma-4-E2B-it",
+              "model": modelResponseName,
               "choices": [
                 {
                   "index": 0,
@@ -113,7 +154,7 @@ class LocalLLMServer {
             "id": "chatcmpl-local",
             "object": "chat.completion",
             "created": DateTime.now().millisecondsSinceEpoch ~/ 1000,
-            "model": "gemma-4-E2B-it",
+            "model": modelResponseName,
             "choices": [
               {
                 "index": 0,
