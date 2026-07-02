@@ -13,6 +13,7 @@ class LocalLLMServer {
   final int port;
   final String host;
   HttpServer? _server;
+  final Set<String> _failedModels = {};
   
   LocalLLMServer({this.port = 8080, this.host = '127.0.0.1'});
   
@@ -61,6 +62,13 @@ class LocalLLMServer {
             final dir = await getApplicationDocumentsDirectory();
             final path = '${dir.path}/${matchedModel.filename}';
             
+            if (_failedModels.contains(path)) {
+              return Response.internalServerError(
+                body: jsonEncode({"error": {"message": "Model previously failed to initialize. Please check model format or device compatibility."}}),
+                headers: {'Content-Type': 'application/json'}
+              );
+            }
+            
             try {
               var builder = FlutterGemma.installModel(
                 modelType: ModelType.gemma4,
@@ -69,6 +77,7 @@ class LocalLLMServer {
               await builder.install();
               await prefs.setString('active_model_url', matchedModel.downloadUrl);
             } catch (e) {
+              _failedModels.add(path);
               return Response.internalServerError(body: jsonEncode({"error": {"message": "Failed to switch model: $e"}}), headers: {'Content-Type': 'application/json'});
             }
           }

@@ -27,6 +27,8 @@ class _ChatScreenState extends State<ChatScreen> {
   String _streamingMessage = '';
   StreamSubscription? _chatSubscription;
   InferenceChat? _chatContext;
+  
+  static final Set<String> _failedModels = {};
 
   @override
   void initState() {
@@ -94,6 +96,11 @@ class _ChatScreenState extends State<ChatScreen> {
       final dir = await getApplicationDocumentsDirectory();
       final path = '${dir.path}/${model.filename}';
       
+      if (_failedModels.contains(path)) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Model previously failed to load. Try another model.')));
+        return;
+      }
+
       var builder = FlutterGemma.installModel(
         modelType: ModelType.gemma4,
         fileType: ModelFileType.litertlm,
@@ -106,6 +113,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _chatContext = null;
       await _initChatContext();
     } catch (e) {
+      final dir = await getApplicationDocumentsDirectory();
+      _failedModels.add('${dir.path}/${model.filename}');
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to switch model: $e')));
     } finally {
       setState(() {

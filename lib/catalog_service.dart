@@ -43,22 +43,15 @@ class CatalogService {
           for (final file in files) {
             final filename = file['path'] as String;
             if (filename.endsWith('.litertlm')) {
-              if (filename.contains('Google_Tensor') || filename.contains('intel') || filename.contains('qualcomm')) {
+              if (filename.contains('Google_Tensor') || filename.contains('intel') || filename.contains('qualcomm') || filename.contains('-web')) {
                 continue;
-              }
-
-              String description = 'Generic Mobile Build';
-              if (filename.contains('-web')) {
-                description = 'Text-Only Web Build';
-              } else {
-                description = 'Full Vision/Audio Build';
               }
 
               models.add(RemoteModel(
                 repo: repo,
                 filename: filename,
                 sizeBytes: file['size'] as int,
-                description: description,
+                description: 'Full Vision/Audio Native Build',
                 type: 'Generation',
               ));
             }
