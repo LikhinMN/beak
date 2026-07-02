@@ -13,6 +13,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
   List<RemoteModel> _models = [];
   bool _isLoading = true;
   String _activeUrl = '';
+  String _activeEmbeddingUrl = '';
   List<String> _installedModelIds = [];
   double _freeDiskSpaceMB = 0.0;
   
@@ -29,6 +30,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final activeUrl = prefs.getString('active_model_url') ?? '';
+    final activeEmbeddingUrl = prefs.getString('active_embedding_url') ?? '';
     final models = await CatalogService.fetchCatalog();
     final installed = await FlutterGemma.listInstalledModels();
     double freeSpace = 0.0;
@@ -40,6 +42,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
 
     setState(() {
       _activeUrl = activeUrl;
+      _activeEmbeddingUrl = activeEmbeddingUrl;
       _models = models;
       _installedModelIds = installed;
       _freeDiskSpaceMB = freeSpace;
@@ -62,7 +65,8 @@ class _ModelsScreenState extends State<ModelsScreen> {
   }
 
   Future<void> _deleteModel(RemoteModel model) async {
-    if (_activeUrl == model.downloadUrl) {
+    if ((model.type == 'Generation' && _activeUrl == model.downloadUrl) ||
+        (model.type == 'Embedding' && _activeEmbeddingUrl == model.downloadUrl)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Cannot delete the active model while it is loaded. Switch to another model first.')),
       );
@@ -104,7 +108,8 @@ class _ModelsScreenState extends State<ModelsScreen> {
   }
 
   Future<void> _handleModelTap(RemoteModel model) async {
-    if (_activeUrl == model.downloadUrl) return; // Already active
+    if (model.type == 'Generation' && _activeUrl == model.downloadUrl) return;
+    if (model.type == 'Embedding' && _activeEmbeddingUrl == model.downloadUrl) return;
 
     // If not installed yet, check disk space before attempting
     if (!_installedModelIds.contains(model.filename)) {
@@ -130,28 +135,49 @@ class _ModelsScreenState extends State<ModelsScreen> {
     });
 
     try {
-      await FlutterGemma.installModel(
-        modelType: ModelType.gemma4,
-        fileType: ModelFileType.litertlm,
-      )
-      .fromNetwork(model.downloadUrl)
-      .withCancelToken(cancelToken)
-      .withProgress((progress) {
-        setState(() {
-          _downloadProgress[model.downloadUrl] = progress.toDouble();
-        });
-      })
-      .install();
+      if (model.type == 'Embedding') {
+        await FlutterGemma.installEmbedder()
+          .modelFromNetwork(model.downloadUrl)
+          .tokenizerFromNetwork(model.tokenizerUrl!)
+          .withCancelToken(cancelToken)
+          .withModelProgress((progress) {
+            setState(() {
+              _downloadProgress[model.downloadUrl] = progress.toDouble();
+            });
+          })
+          .install();
+      } else {
+        await FlutterGemma.installModel(
+          modelType: ModelType.gemma4,
+          fileType: ModelFileType.litertlm,
+        )
+        .fromNetwork(model.downloadUrl)
+        .withCancelToken(cancelToken)
+        .withProgress((progress) {
+          setState(() {
+            _downloadProgress[model.downloadUrl] = progress.toDouble();
+          });
+        })
+        .install();
+      }
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('active_model_url', model.downloadUrl);
+      if (model.type == 'Embedding') {
+        await prefs.setString('active_embedding_url', model.downloadUrl);
+      } else {
+        await prefs.setString('active_model_url', model.downloadUrl);
+      }
       
       await _loadData(); // Reload stats
 
       setState(() {
         _cancelTokens.remove(model.downloadUrl);
         _downloadStatus.remove(model.downloadUrl);
-        _activeUrl = model.downloadUrl;
+        if (model.type == 'Embedding') {
+          _activeEmbeddingUrl = model.downloadUrl;
+        } else {
+          _activeUrl = model.downloadUrl;
+        }
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -200,7 +226,8 @@ class _ModelsScreenState extends State<ModelsScreen> {
             itemCount: _models.length,
             itemBuilder: (context, index) {
               final model = _models[index];
-              final isActive = _activeUrl == model.downloadUrl;
+              final isActive = (model.type == 'Generation' && _activeUrl == model.downloadUrl) ||
+                               (model.type == 'Embedding' && _activeEmbeddingUrl == model.downloadUrl);
               final isInstalled = _installedModelIds.contains(model.filename);
               final progress = _downloadProgress[model.downloadUrl];
               final status = _downloadStatus[model.downloadUrl];
