@@ -6,6 +6,7 @@ import 'package:disk_space_2/disk_space_2.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'catalog_service.dart';
 import 'beak_theme.dart';
@@ -152,8 +153,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
         print('Could not check disk space: $e');
       }
 
-      final secureStorage = const FlutterSecureStorage();
-      final hfToken = await secureStorage.read(key: 'hf_token') ?? '';
+      final hfToken = dotenv.env['HF_TOKEN'] ?? '';
       
       try {
         final headers = hfToken.isNotEmpty ? {'Authorization': 'Bearer $hfToken'} : <String, String>{};
@@ -203,8 +203,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
     });
 
     try {
-      final secureStorage = const FlutterSecureStorage();
-      final hfToken = await secureStorage.read(key: 'hf_token') ?? '';
+      final hfToken = dotenv.env['HF_TOKEN'] ?? '';
 
       if (model.type == 'Embedding') {
         var builder = FlutterGemma.installEmbedder()
