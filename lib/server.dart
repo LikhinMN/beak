@@ -109,7 +109,7 @@ class LocalLLMServer {
           
           chatStream.listen((response) {
             if (response is TextResponse) {
-              final token = response.token;
+              final token = response.token.replaceAll('\u2581', ' ');
               final chunk = {
                 "id": "chatcmpl-local",
                 "object": "chat.completion.chunk",
@@ -156,7 +156,7 @@ class LocalLLMServer {
           final response = await chat.generateChatResponse();
           String responseText = "";
           if (response is TextResponse) {
-            responseText = response.token;
+            responseText = response.token.replaceAll('\u2581', ' ');
           }
           
           final openaiResponse = {
