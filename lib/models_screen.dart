@@ -13,9 +13,12 @@ class _ModelsScreenState extends State<ModelsScreen> {
   List<RemoteModel> _models = [];
   bool _isLoading = true;
   String _activeUrl = '';
+  List<String> _installedModelIds = [];
+  double _freeDiskSpaceMB = 0.0;
   
   Map<String, double> _downloadProgress = {};
   Map<String, String> _downloadStatus = {};
+  Map<String, CancelToken> _cancelTokens = {};
 
   @override
   void initState() {
@@ -25,36 +28,105 @@ class _ModelsScreenState extends State<ModelsScreen> {
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _activeUrl = prefs.getString('active_model_url') ?? '';
-    });
-
+    final activeUrl = prefs.getString('active_model_url') ?? '';
     final models = await CatalogService.fetchCatalog();
+    final installed = await FlutterGemma.listInstalledModels();
+    double freeSpace = 0.0;
+    try {
+      freeSpace = await DiskSpace.getFreeDiskSpace ?? 0.0;
+    } catch (e) {
+      print('Could not get disk space: $e');
+    }
+
     setState(() {
+      _activeUrl = activeUrl;
       _models = models;
+      _installedModelIds = installed;
+      _freeDiskSpaceMB = freeSpace;
       _isLoading = false;
     });
+  }
+
+  void _cancelDownload(RemoteModel model) {
+    if (_cancelTokens.containsKey(model.downloadUrl)) {
+      _cancelTokens[model.downloadUrl]!.cancel('User cancelled');
+      setState(() {
+        _cancelTokens.remove(model.downloadUrl);
+        _downloadStatus.remove(model.downloadUrl);
+        _downloadProgress.remove(model.downloadUrl);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Download cancelled for ${model.filename}')),
+      );
+    }
+  }
+
+  Future<void> _deleteModel(RemoteModel model) async {
+    if (_activeUrl == model.downloadUrl) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cannot delete the active model while it is loaded. Switch to another model first.')),
+      );
+      return;
+    }
+
+    bool confirm = await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Model?'),
+        content: Text('Are you sure you want to delete ${model.filename}?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('CANCEL')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('DELETE', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    ) ?? false;
+
+    if (!confirm) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      await FlutterGemma.uninstallModel(model.filename);
+      await _loadData(); // Refresh data
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${model.filename} deleted successfully.')),
+      );
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to delete model: $e')),
+      );
+    }
   }
 
   Future<void> _handleModelTap(RemoteModel model) async {
     if (_activeUrl == model.downloadUrl) return; // Already active
 
-    // Check disk space
-    try {
-      final freeSpace = await DiskSpace.getFreeDiskSpace;
-      if (freeSpace != null && freeSpace < model.sizeMB) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Not enough free disk space! Need ${model.sizeMB.toStringAsFixed(0)} MB, but only ${freeSpace.toStringAsFixed(0)} MB available.')),
-        );
-        return;
+    // If not installed yet, check disk space before attempting
+    if (!_installedModelIds.contains(model.filename)) {
+      try {
+        final freeSpace = await DiskSpace.getFreeDiskSpace;
+        if (freeSpace != null && freeSpace < model.sizeMB) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Not enough free disk space! Need ${model.sizeMB.toStringAsFixed(0)} MB, but only ${freeSpace.toStringAsFixed(0)} MB available.')),
+          );
+          return;
+        }
+      } catch (e) {
+        print('Could not check disk space: $e');
       }
-    } catch (e) {
-      print('Could not check disk space: $e');
     }
 
+    final cancelToken = CancelToken();
+
     setState(() {
-      _downloadStatus[model.downloadUrl] = 'Downloading...';
+      _downloadStatus[model.downloadUrl] = _installedModelIds.contains(model.filename) ? 'Loading...' : 'Downloading...';
       _downloadProgress[model.downloadUrl] = 0.0;
+      _cancelTokens[model.downloadUrl] = cancelToken;
     });
 
     try {
@@ -63,6 +135,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
         fileType: ModelFileType.litertlm,
       )
       .fromNetwork(model.downloadUrl)
+      .withCancelToken(cancelToken)
       .withProgress((progress) {
         setState(() {
           _downloadProgress[model.downloadUrl] = progress.toDouble();
@@ -70,15 +143,13 @@ class _ModelsScreenState extends State<ModelsScreen> {
       })
       .install();
 
-      // Switch was successful
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('active_model_url', model.downloadUrl);
       
-      // Note: By calling install(), flutter_gemma automatically sets it as the active model.
-      // The server will use the newly active model on the very next /chat/completions request
-      // without needing a restart!
-      
+      await _loadData(); // Reload stats
+
       setState(() {
+        _cancelTokens.remove(model.downloadUrl);
         _downloadStatus.remove(model.downloadUrl);
         _activeUrl = model.downloadUrl;
       });
@@ -88,7 +159,11 @@ class _ModelsScreenState extends State<ModelsScreen> {
       );
 
     } catch (e) {
+      if (e is DownloadCancelledException) {
+        return;
+      }
       setState(() {
+        _cancelTokens.remove(model.downloadUrl);
         _downloadStatus[model.downloadUrl] = 'Error: $e';
       });
     }
@@ -100,41 +175,105 @@ class _ModelsScreenState extends State<ModelsScreen> {
       return Center(child: CircularProgressIndicator());
     }
 
-    return ListView.builder(
-      itemCount: _models.length,
-      itemBuilder: (context, index) {
-        final model = _models[index];
-        final isActive = _activeUrl == model.downloadUrl;
-        final progress = _downloadProgress[model.downloadUrl];
-        final status = _downloadStatus[model.downloadUrl];
+    double totalUsedMB = 0;
+    for (var m in _models) {
+      if (_installedModelIds.contains(m.filename)) {
+        totalUsedMB += m.sizeMB;
+      }
+    }
 
-        return Card(
-          margin: EdgeInsets.all(8),
-          child: ListTile(
-            title: Text(model.filename),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${model.repo}\n${model.sizeGB.toStringAsFixed(2)} GB - ${model.description}'),
-                if (status != null) ...[
-                  SizedBox(height: 8),
-                  Text(status, style: TextStyle(color: Colors.blue)),
-                  if (progress != null && progress > 0 && progress < 100)
-                    LinearProgressIndicator(value: progress / 100),
-                ]
-              ],
-            ),
-            trailing: isActive
-                ? Icon(Icons.check_circle, color: Colors.green)
-                : IconButton(
-                    icon: Icon(Icons.download),
-                    onPressed: status != null && status.contains('Downloading') 
-                        ? null 
-                        : () => _handleModelTap(model),
-                  ),
+    return Column(
+      children: [
+        Container(
+          padding: EdgeInsets.all(16),
+          color: Colors.grey[200],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Storage Used: ${(totalUsedMB / 1024).toStringAsFixed(2)} GB', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('Free: ${(_freeDiskSpaceMB / 1024).toStringAsFixed(2)} GB', style: TextStyle(fontWeight: FontWeight.bold)),
+            ],
           ),
-        );
-      },
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _models.length,
+            itemBuilder: (context, index) {
+              final model = _models[index];
+              final isActive = _activeUrl == model.downloadUrl;
+              final isInstalled = _installedModelIds.contains(model.filename);
+              final progress = _downloadProgress[model.downloadUrl];
+              final status = _downloadStatus[model.downloadUrl];
+              final isDownloading = status != null && status.contains('Downloading');
+
+              return Card(
+                margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                child: Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(model.filename, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          ),
+                          if (isActive)
+                            Chip(
+                              label: Text('ACTIVE', style: TextStyle(color: Colors.white, fontSize: 10)),
+                              backgroundColor: Colors.green,
+                              padding: EdgeInsets.zero,
+                            )
+                          else if (isInstalled)
+                            Chip(
+                              label: Text('INSTALLED', style: TextStyle(color: Colors.white, fontSize: 10)),
+                              backgroundColor: Colors.blueGrey,
+                              padding: EdgeInsets.zero,
+                            ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Text('${model.repo}'),
+                      Text('${model.sizeGB.toStringAsFixed(2)} GB - ${model.description}', style: TextStyle(color: Colors.grey[600])),
+                      if (status != null) ...[
+                        SizedBox(height: 8),
+                        Text(status, style: TextStyle(color: Colors.blue)),
+                        if (progress != null && progress > 0 && progress < 100)
+                          LinearProgressIndicator(value: progress / 100),
+                      ],
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (isInstalled && !isActive)
+                            TextButton.icon(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              label: Text('DELETE', style: TextStyle(color: Colors.red)),
+                              onPressed: () => _deleteModel(model),
+                            ),
+                          if (!isActive)
+                            isDownloading
+                                ? TextButton.icon(
+                                    icon: Icon(Icons.cancel, color: Colors.red),
+                                    label: Text('CANCEL', style: TextStyle(color: Colors.red)),
+                                    onPressed: () => _cancelDownload(model),
+                                  )
+                                : ElevatedButton.icon(
+                                    icon: Icon(isInstalled ? Icons.play_arrow : Icons.download),
+                                    label: Text(isInstalled ? 'LOAD' : 'DOWNLOAD'),
+                                    onPressed: () => _handleModelTap(model),
+                                  ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
