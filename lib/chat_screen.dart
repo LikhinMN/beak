@@ -292,32 +292,45 @@ class ChatScreenState extends State<ChatScreen> {
               : null,
         ),
         drawer: Drawer(
-          backgroundColor: Colors.grey[900],
+          backgroundColor: Color(0xFF111111),
           child: Column(
             children: [
               DrawerHeader(
-                decoration: BoxDecoration(color: Colors.black),
-                child: Center(child: Text('Beak', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold))),
+                decoration: BoxDecoration(color: BeakTheme.backgroundBlack),
+                child: Center(
+                  child: BeakTheme.applyGradient(
+                    Text('Beak', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 1.2))
+                  ),
+                ),
               ),
               ListTile(
-                leading: Icon(Icons.add, color: Colors.white),
-                title: Text('New Chat', style: TextStyle(color: Colors.white)),
+                leading: BeakTheme.applyGradient(Icon(Icons.add_circle_outline)),
+                title: Text('New Chat', style: TextStyle(color: BeakTheme.primaryText, fontWeight: FontWeight.w600)),
                 onTap: () {
                   Navigator.pop(context);
                   _createNewSession();
                 },
               ),
-              Divider(color: Colors.grey[800]),
+              Divider(color: BeakTheme.secondaryText.withValues(alpha: 0.1), height: 1),
               Expanded(
                 child: ListView.builder(
+                  padding: EdgeInsets.zero,
                   itemCount: _sessions.length,
                   itemBuilder: (context, index) {
                     final session = _sessions[index];
                     final isSelected = session == _currentSession;
                     return ListTile(
                       selected: isSelected,
-                      selectedTileColor: Colors.white.withValues(alpha: 0.1),
-                      title: Text(session.title, style: TextStyle(color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      selectedTileColor: BeakTheme.goldLight.withValues(alpha: 0.1),
+                      title: Text(
+                        session.title, 
+                        style: TextStyle(
+                          color: isSelected ? BeakTheme.goldLight : BeakTheme.secondaryText,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        maxLines: 1, 
+                        overflow: TextOverflow.ellipsis
+                      ),
                       onTap: () {
                         setState(() {
                           _currentSession = session;
@@ -331,11 +344,11 @@ class ChatScreenState extends State<ChatScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           IconButton(
-                            icon: Icon(Icons.edit, size: 16, color: Colors.grey),
+                            icon: Icon(Icons.edit, size: 16, color: isSelected ? BeakTheme.goldLight.withValues(alpha: 0.7) : Colors.grey[700]),
                             onPressed: () => _renameSession(session),
                           ),
                           IconButton(
-                            icon: Icon(Icons.delete, size: 16, color: Colors.grey),
+                            icon: Icon(Icons.delete, size: 16, color: isSelected ? BeakTheme.goldLight.withValues(alpha: 0.7) : Colors.grey[700]),
                             onPressed: () => _deleteSession(session),
                           ),
                         ],
