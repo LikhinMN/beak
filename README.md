@@ -11,6 +11,10 @@ Beak is a premium, localized AI interface running strictly on-device using LiteR
 - **Dynamic Model Switching**: Hot-swap between models and embedders downloaded seamlessly from Hugging Face.
 - **Intelligent Streaming UI**: Progressive markdown rendering with native LaTeX mathematics support, a custom-animated "Thinking" indicator, and automatic repetition-loop safety nets.
 
+## Architecture
+
+![LiteRT-LM and Beak Architecture Overview](assets/architecture.png)
+
 ---
 
 ## External RAG App Integration
