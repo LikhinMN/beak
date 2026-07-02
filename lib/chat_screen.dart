@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'catalog_service.dart';
@@ -141,6 +143,7 @@ class ChatScreenState extends State<ChatScreen> {
         temperature: 0.7,
         topP: 0.9,
         maxOutputTokens: 1024,
+        systemInstruction: 'You are a helpful AI assistant. Always use LaTeX enclosed in \$ for inline math and \$\$ for block math. Keep your responses concise and precise.',
       );
       
       // Load context for current session
@@ -430,6 +433,16 @@ class ChatScreenState extends State<ChatScreen> {
         childWidget = MarkdownBody(
           key: const ValueKey('markdown'),
           data: content,
+          selectable: true,
+          builders: {
+            'latex': LatexElementBuilder(
+              textStyle: TextStyle(color: BeakTheme.goldLight, fontSize: 16),
+            ),
+          },
+          extensionSet: md.ExtensionSet(
+            [LatexBlockSyntax(), ...md.ExtensionSet.gitHubFlavored.blockSyntaxes],
+            [LatexInlineSyntax(), ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes],
+          ),
           styleSheet: MarkdownStyleSheet(
             p: TextStyle(color: BeakTheme.primaryText, fontSize: 16, height: 1.6),
             code: TextStyle(backgroundColor: Color(0xFF111111), color: BeakTheme.goldLight, fontFamily: 'monospace'),
