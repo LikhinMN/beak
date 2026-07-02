@@ -131,6 +131,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   int _currentIndex = 0;
+  final GlobalKey<ChatScreenState> _chatKey = GlobalKey();
   
   @override
   Widget build(BuildContext context) {
@@ -160,14 +161,19 @@ class _MyAppState extends State<MyApp> {
         body: IndexedStack(
           index: _currentIndex,
           children: [
-            ChatScreen(),
+            ChatScreen(key: _chatKey),
             ModelsScreen(),
             SettingsScreen(),
           ],
         ),
         bottomNavigationBar: BottomNavigationBar(
           currentIndex: _currentIndex,
-          onTap: (index) => setState(() => _currentIndex = index),
+          onTap: (index) {
+            setState(() => _currentIndex = index);
+            if (index == 0) {
+              _chatKey.currentState?.refreshModels();
+            }
+          },
           items: const [
             BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
             BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Catalog'),

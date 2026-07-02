@@ -8,11 +8,13 @@ import 'catalog_service.dart';
 import 'chat_service.dart';
 
 class ChatScreen extends StatefulWidget {
+  ChatScreen({Key? key}) : super(key: key);
+
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  ChatScreenState createState() => ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class ChatScreenState extends State<ChatScreen> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   
@@ -33,6 +35,10 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    _loadInitialData();
+  }
+
+  void refreshModels() {
     _loadInitialData();
   }
 
@@ -58,13 +64,15 @@ class _ChatScreenState extends State<ChatScreen> {
       try {
         _selectedModel = _installedModels.firstWhere((m) => m.downloadUrl == activeUrl);
       } catch (e) {
-        if (_installedModels.isNotEmpty) _selectedModel = _installedModels.first;
+        _selectedModel = _installedModels.isNotEmpty ? _installedModels.first : null;
       }
-    } else if (_installedModels.isNotEmpty) {
-      _selectedModel = _installedModels.first;
+    } else {
+      _selectedModel = _installedModels.isNotEmpty ? _installedModels.first : null;
     }
 
-    setState(() {});
+    if (mounted) {
+      setState(() {});
+    }
     _initChatContext();
   }
 
