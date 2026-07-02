@@ -24,11 +24,9 @@ Use this endpoint to generate vector embeddings for your RAG documents.
 **Endpoint**: `POST http://<YOUR_DEVICE_IP>:8080/v1/embeddings`
 
 ```bash
-curl -X POST http://192.168.1.15:8080/v1/embeddings \
+curl http://<YOUR_DEVICE_IP>:8080/v1/embeddings \
   -H "Content-Type: application/json" \
-  -d '{
-    "input": "The transformer architecture relies on self-attention."
-  }'
+  -d '{"model":"embeddinggemma-300m","input":"your text here"}'
 ```
 
 **Response**:
@@ -53,14 +51,9 @@ Use this endpoint for passing retrieved RAG context and querying the active lang
 **Endpoint**: `POST http://<YOUR_DEVICE_IP>:8080/v1/chat/completions`
 
 ```bash
-curl -X POST http://192.168.1.15:8080/v1/chat/completions \
+curl http://<YOUR_DEVICE_IP>:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{
-    "messages": [
-      {"role": "system", "content": "You are a helpful assistant."},
-      {"role": "user", "content": "Based on the provided context, how do transformers work?"}
-    ]
-  }'
+  -d '{"model":"gemma-4-E2B-it","messages":[{"role":"user","content":"hello"}],"stream":false}'
 ```
 
 **Response**:
