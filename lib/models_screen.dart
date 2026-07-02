@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:disk_space_2/disk_space_2.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'catalog_service.dart';
 
@@ -32,7 +34,24 @@ class _ModelsScreenState extends State<ModelsScreen> {
     final activeUrl = prefs.getString('active_model_url') ?? '';
     final activeEmbeddingUrl = prefs.getString('active_embedding_url') ?? '';
     final models = await CatalogService.fetchCatalog();
-    final installed = await FlutterGemma.listInstalledModels();
+    final rawInstalled = await FlutterGemma.listInstalledModels();
+    final dir = await getApplicationDocumentsDirectory();
+    List<String> validInstalled = [];
+
+    for (var filename in rawInstalled) {
+      final file = File('${dir.path}/$filename');
+      if (await file.exists()) {
+        final length = await file.length();
+        final model = models.firstWhere((m) => m.filename == filename, orElse: () => RemoteModel(repo: '', filename: '', sizeBytes: length, description: ''));
+        // Allow a small margin (e.g. 5%) because of possible sparse allocations or metadata
+        if (model.repo.isEmpty || length >= (model.sizeBytes * 0.95).toInt()) {
+          validInstalled.add(filename);
+        } else {
+          print('Incomplete model $filename: $length bytes / ${model.sizeBytes} bytes expected');
+        }
+      }
+    }
+
     double freeSpace = 0.0;
     try {
       freeSpace = await DiskSpace.getFreeDiskSpace ?? 0.0;
@@ -44,7 +63,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
       _activeUrl = activeUrl;
       _activeEmbeddingUrl = activeEmbeddingUrl;
       _models = models;
-      _installedModelIds = installed;
+      _installedModelIds = validInstalled;
       _freeDiskSpaceMB = freeSpace;
       _isLoading = false;
     });
