@@ -88,3 +88,35 @@ The server provides graceful error responses. For instance:
   }
 }
 ```
+
+## 3. Embedding Generation Example
+
+### cURL Request
+```bash
+curl http://127.0.0.1:8080/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "How do I implement RAG?"
+  }'
+```
+
+### JSON Response
+```json
+{
+  "object": "list",
+  "data": [
+    {
+      "object": "embedding",
+      "index": 0,
+      "embedding": [0.0123, -0.0456, 0.0789, "..."]
+    }
+  ],
+  "model": "embeddinggemma-300m",
+  "usage": {
+    "prompt_tokens": 0,
+    "total_tokens": 0
+  }
+}
+```
+
+*Note: The server automatically prefixes inputs with `task: search result | query:` if a custom prefix is not provided. This is the optimal prefix for semantic search queries using EmbeddingGemma.*
