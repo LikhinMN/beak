@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'catalog_service.dart';
 import 'chat_service.dart';
 import 'beak_theme.dart';
+import 'thinking_indicator.dart';
 
 class ChatScreen extends StatefulWidget {
   ChatScreen({Key? key}) : super(key: key);
@@ -371,7 +372,7 @@ class ChatScreenState extends State<ChatScreen> {
                       itemCount: _currentSession!.messages.length + (_isGenerating ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == _currentSession!.messages.length) {
-                          return _buildMessageBubble(role: 'assistant', content: _streamingMessage);
+                          return _buildMessageBubble(role: 'assistant', content: _streamingMessage, isGenerating: true);
                         }
                         final msg = _currentSession!.messages[index];
                         return _buildMessageBubble(role: msg.role, content: msg.content);
@@ -384,21 +385,56 @@ class ChatScreenState extends State<ChatScreen> {
       );
   }
 
-  Widget _buildMessageBubble({required String role, required String content}) {
+  Widget _buildMessageBubble({required String role, required String content, bool isGenerating = false}) {
     final isUser = role == 'user';
     
     if (!isUser) {
       // Assistant message: Clean text block, no borders
+      Widget childWidget;
+      if (isGenerating && content.isEmpty) {
+        childWidget = Padding(
+          key: const ValueKey('thinking'),
+          padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ThinkingIndicator(size: 40),
+              const SizedBox(height: 12),
+              Text('Thinking...', style: TextStyle(color: BeakTheme.secondaryText, fontSize: 14)),
+            ],
+          ),
+        );
+      } else {
+        childWidget = MarkdownBody(
+          key: const ValueKey('markdown'),
+          data: content,
+          styleSheet: MarkdownStyleSheet(
+            p: TextStyle(color: BeakTheme.primaryText, fontSize: 16, height: 1.6),
+            code: TextStyle(backgroundColor: Color(0xFF111111), color: BeakTheme.goldLight, fontFamily: 'monospace'),
+            codeblockDecoration: BoxDecoration(color: Color(0xFF111111), borderRadius: BorderRadius.circular(8)),
+          ),
+        );
+      }
+
       return Align(
         alignment: Alignment.centerLeft,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          child: MarkdownBody(
-            data: content,
-            styleSheet: MarkdownStyleSheet(
-              p: TextStyle(color: BeakTheme.primaryText, fontSize: 16, height: 1.6),
-              code: TextStyle(backgroundColor: Color(0xFF111111), color: BeakTheme.goldLight, fontFamily: 'monospace'),
-              codeblockDecoration: BoxDecoration(color: Color(0xFF111111), borderRadius: BorderRadius.circular(8)),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 150),
+            layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
+              return Stack(
+                alignment: Alignment.topLeft,
+                children: <Widget>[
+                  ...previousChildren,
+                  if (currentChild != null) currentChild,
+                ],
+              );
+            },
+            child: SizedBox(
+              key: ValueKey<bool>(isGenerating && content.isEmpty),
+              width: double.infinity,
+              child: childWidget,
             ),
           ),
         ),
