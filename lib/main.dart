@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
+import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'server.dart';
@@ -38,21 +39,38 @@ void main() async {
   
   await FlutterGemma.initialize(
     inferenceEngines: [LiteRtLmEngine()],
+    embeddingBackends: [LiteRtEmbeddingBackend()],
   );
 
   final prefs = await SharedPreferences.getInstance();
 
-  // Restore previous model if any
+  // Restore previous generation model if any
   final lastUrl = prefs.getString('active_model_url');
   if (lastUrl != null) {
-    // Fire and forget the model installation/restoration
     FlutterGemma.installModel(
       modelType: ModelType.gemma4,
       fileType: ModelFileType.litertlm,
     ).fromNetwork(lastUrl).install().then((_) {
-      print('Model restored successfully.');
+      print('Generation model restored successfully.');
     }).catchError((e) {
-      print('Failed to restore model: $e');
+      print('Failed to restore generation model: $e');
+    });
+  }
+
+  // Restore previous embedding model if any
+  final lastEmbeddingUrl = prefs.getString('active_embedding_url');
+  if (lastEmbeddingUrl != null) {
+    // We assume the tokenizer is always sentencepiece.model in the same repo, which we fetch based on the url
+    final baseRepoUrl = lastEmbeddingUrl.substring(0, lastEmbeddingUrl.lastIndexOf('/'));
+    final tokenizerUrl = '$baseRepoUrl/sentencepiece.model';
+    
+    FlutterGemma.installEmbedder()
+      .modelFromNetwork(lastEmbeddingUrl)
+      .tokenizerFromNetwork(tokenizerUrl)
+      .install().then((_) {
+      print('Embedding model restored successfully.');
+    }).catchError((e) {
+      print('Failed to restore embedding model: $e');
     });
   }
   
