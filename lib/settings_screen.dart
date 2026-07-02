@@ -13,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _serverEnabled = true;
   String _activeModel = 'None';
+  String _activeEmbeddingModel = 'None';
   bool _isClearing = false;
 
   @override
@@ -26,6 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _serverEnabled = prefs.getBool('server_enabled') ?? true;
       _activeModel = prefs.getString('active_model_url') ?? 'None';
+      _activeEmbeddingModel = prefs.getString('active_embedding_url') ?? 'None';
     });
   }
 
@@ -93,8 +95,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('active_model_url');
+      await prefs.remove('active_embedding_url');
       setState(() {
         _activeModel = 'None';
+        _activeEmbeddingModel = 'None';
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -119,15 +123,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SwitchListTile(
           title: Text('Enable Local HTTP Server'),
           subtitle: Text(
-            _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions' : 'Stopped'
+            _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions, /v1/embeddings' : 'Stopped'
           ),
           value: _serverEnabled,
           onChanged: _toggleServer,
         ),
         Divider(),
         ListTile(
-          title: Text('Current Loaded Model'),
-          subtitle: Text(_activeModel.isEmpty ? 'None' : _activeModel.split('/').last),
+          title: Text('Current Generation Model'),
+          subtitle: Text(_activeModel.isEmpty || _activeModel == 'None' ? 'None' : _activeModel.split('/').last),
+        ),
+        ListTile(
+          title: Text('Current Embedding Model'),
+          subtitle: Text(_activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last),
         ),
         Divider(),
         ListTile(
