@@ -1,9 +1,12 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:disk_space_2/disk_space_2.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' as http;
 import 'catalog_service.dart';
 
 class ModelsScreen extends StatefulWidget {
@@ -143,6 +146,47 @@ class _ModelsScreenState extends State<ModelsScreen> {
       } catch (e) {
         print('Could not check disk space: $e');
       }
+
+      final secureStorage = const FlutterSecureStorage();
+      final hfToken = await secureStorage.read(key: 'hf_token') ?? '';
+      
+      try {
+        final headers = hfToken.isNotEmpty ? {'Authorization': 'Bearer $hfToken'} : <String, String>{};
+        final response = await http.head(
+          Uri.parse(model.downloadUrl), 
+          headers: headers
+        ).timeout(const Duration(seconds: 15));
+        
+        if (response.statusCode == 401 || response.statusCode == 403) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("This model requires a Hugging Face account. Add your access token in Settings, and make sure you've accepted the model's license on huggingface.co first."),
+              duration: Duration(seconds: 5),
+            ),
+          );
+          return;
+        } else if (response.statusCode == 404) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Not Found (404): The repository or file no longer exists.')),
+          );
+          return;
+        } else if (response.statusCode >= 500) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Server Error (${response.statusCode}): Hugging Face is currently unreachable.')),
+          );
+          return;
+        }
+      } on TimeoutException {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Timeout: The request to Hugging Face timed out. Please check your connection.')),
+        );
+        return;
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Network Error: Could not reach Hugging Face. ($e)')),
+        );
+        return;
+      }
     }
 
     final cancelToken = CancelToken();
@@ -154,30 +198,35 @@ class _ModelsScreenState extends State<ModelsScreen> {
     });
 
     try {
+      final secureStorage = const FlutterSecureStorage();
+      final hfToken = await secureStorage.read(key: 'hf_token') ?? '';
+
       if (model.type == 'Embedding') {
-        await FlutterGemma.installEmbedder()
-          .modelFromNetwork(model.downloadUrl)
-          .tokenizerFromNetwork(model.tokenizerUrl!)
+        var builder = FlutterGemma.installEmbedder()
+          .modelFromNetwork(model.downloadUrl, token: hfToken.isNotEmpty ? hfToken : null)
+          .tokenizerFromNetwork(model.tokenizerUrl!, token: hfToken.isNotEmpty ? hfToken : null)
           .withCancelToken(cancelToken)
           .withModelProgress((progress) {
             setState(() {
               _downloadProgress[model.downloadUrl] = progress.toDouble();
             });
-          })
-          .install();
+          });
+        
+        await builder.install();
       } else {
-        await FlutterGemma.installModel(
+        var builder = FlutterGemma.installModel(
           modelType: ModelType.gemma4,
           fileType: ModelFileType.litertlm,
         )
-        .fromNetwork(model.downloadUrl)
+        .fromNetwork(model.downloadUrl, token: hfToken.isNotEmpty ? hfToken : null)
         .withCancelToken(cancelToken)
         .withProgress((progress) {
           setState(() {
             _downloadProgress[model.downloadUrl] = progress.toDouble();
           });
-        })
-        .install();
+        });
+
+        await builder.install();
       }
 
       final prefs = await SharedPreferences.getInstance();

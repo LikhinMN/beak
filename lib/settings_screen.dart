@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'server.dart';
 import 'main.dart';
 
@@ -15,6 +17,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _activeModel = 'None';
   String _activeEmbeddingModel = 'None';
   bool _isClearing = false;
+  final TextEditingController _tokenController = TextEditingController();
+  final _secureStorage = const FlutterSecureStorage();
 
   @override
   void initState() {
@@ -24,10 +28,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    String? storedToken = await _secureStorage.read(key: 'hf_token');
+    
+    // Fallback to env if not set in secure storage
+    if (storedToken == null || storedToken.isEmpty) {
+      storedToken = dotenv.env['HF_TOKEN'] ?? '';
+      if (storedToken.isNotEmpty) {
+        await _secureStorage.write(key: 'hf_token', value: storedToken);
+      }
+    }
+
     setState(() {
       _serverEnabled = prefs.getBool('server_enabled') ?? true;
       _activeModel = prefs.getString('active_model_url') ?? 'None';
       _activeEmbeddingModel = prefs.getString('active_embedding_url') ?? 'None';
+      _tokenController.text = storedToken ?? '';
     });
   }
 
@@ -136,6 +151,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ListTile(
           title: Text('Current Embedding Model'),
           subtitle: Text(_activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last),
+        ),
+        Divider(),
+        ListTile(
+          title: Text('Hugging Face Token'),
+          subtitle: Text('Required for downloading gated models. Generates from huggingface.co/settings/tokens.'),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: TextField(
+            controller: _tokenController,
+            decoration: InputDecoration(
+              hintText: 'hf_...',
+              border: OutlineInputBorder(),
+              suffixIcon: IconButton(
+                icon: Icon(Icons.save),
+                onPressed: () async {
+                  await _secureStorage.write(key: 'hf_token', value: _tokenController.text.trim());
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Hugging Face Token saved securely')),
+                  );
+                },
+              ),
+            ),
+          ),
         ),
         Divider(),
         ListTile(

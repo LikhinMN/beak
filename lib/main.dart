@@ -4,6 +4,7 @@ import 'package:flutter_gemma_litertlm/flutter_gemma_litertlm.dart';
 import 'package:flutter_gemma_embeddings/flutter_gemma_embeddings.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'server.dart';
 import 'models_screen.dart';
 import 'settings_screen.dart';
@@ -35,6 +36,13 @@ class MyTaskHandler extends TaskHandler {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  try {
+    await dotenv.load(fileName: ".env");
+  } catch (e) {
+    print("No .env file found");
+  }
+  
   FlutterForegroundTask.initCommunicationPort();
   
   await FlutterGemma.initialize(
