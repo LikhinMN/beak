@@ -13,16 +13,18 @@ Beak is a premium, localized AI interface running strictly on-device using LiteR
 
 ## External RAG App Integration
 
-Beak exposes an OpenAI-compatible HTTP server running locally on port `8080` (or another available port). By enabling the "Local HTTP Server" in Beak's Settings, other apps on the same device can securely execute AI tasks.
+Beak exposes an OpenAI-compatible HTTP server running locally on port `8080`. The server binds to `0.0.0.0` by default, meaning it is accessible over your local Wi-Fi network (LAN). By enabling the "Local HTTP Server" in Beak's Settings, you can use your phone as a dedicated local AI backend for other devices on your network (like your laptop).
+
+To connect from another device, find your phone's local IP address (e.g., `192.168.1.15`) and use it in place of `localhost`.
 
 ### 1. Generating Embeddings
 
 Use this endpoint to generate vector embeddings for your RAG documents.
 
-**Endpoint**: `POST http://localhost:8080/v1/embeddings`
+**Endpoint**: `POST http://<YOUR_DEVICE_IP>:8080/v1/embeddings`
 
 ```bash
-curl -X POST http://localhost:8080/v1/embeddings \
+curl -X POST http://192.168.1.15:8080/v1/embeddings \
   -H "Content-Type: application/json" \
   -d '{
     "input": "The transformer architecture relies on self-attention."
@@ -48,10 +50,10 @@ curl -X POST http://localhost:8080/v1/embeddings \
 
 Use this endpoint for passing retrieved RAG context and querying the active language model.
 
-**Endpoint**: `POST http://localhost:8080/v1/chat/completions`
+**Endpoint**: `POST http://<YOUR_DEVICE_IP>:8080/v1/chat/completions`
 
 ```bash
-curl -X POST http://localhost:8080/v1/chat/completions \
+curl -X POST http://192.168.1.15:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [

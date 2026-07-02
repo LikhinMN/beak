@@ -15,7 +15,7 @@ class LocalLLMServer {
   HttpServer? _server;
   final Set<String> _failedModels = {};
   
-  LocalLLMServer({this.port = 8080, this.host = '127.0.0.1'});
+  LocalLLMServer({this.port = 8080, this.host = '0.0.0.0'});
   
   Future<void> start() async {
     final router = Router();
