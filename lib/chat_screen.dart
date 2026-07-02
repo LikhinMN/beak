@@ -137,7 +137,11 @@ class ChatScreenState extends State<ChatScreen> {
     if (_selectedModel == null) return;
     try {
       final model = await FlutterGemma.getActiveModel();
-      _chatContext = await model.createChat();
+      _chatContext = await model.createChat(
+        temperature: 0.7,
+        topP: 0.9,
+        maxOutputTokens: 1024,
+      );
       
       // Load context for current session
       if (_currentSession != null) {
@@ -182,6 +186,24 @@ class ChatScreenState extends State<ChatScreen> {
           setState(() {
             _streamingMessage += response.token;
           });
+          
+          final String tail = _streamingMessage.length > 300 
+              ? _streamingMessage.substring(_streamingMessage.length - 300) 
+              : _streamingMessage;
+          final RegExp loopRegex = RegExp(r'(.{4,50}?)\1{3,}$');
+          
+          if (loopRegex.hasMatch(tail)) {
+            _chatSubscription?.cancel();
+            setState(() {
+              _isGenerating = false;
+              _streamingMessage += '\n\n[Generation truncated due to repetition]';
+              _currentSession!.messages.add(ChatMessage(role: 'assistant', content: _streamingMessage));
+              _streamingMessage = '';
+            });
+            _saveSessions();
+            return;
+          }
+
           _scrollToBottom();
         }
       }, onDone: () {
