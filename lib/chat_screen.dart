@@ -345,10 +345,18 @@ class ChatScreenState extends State<ChatScreen> {
                   itemBuilder: (context, index) {
                     final session = _sessions[index];
                     final isSelected = session == _currentSession;
-                    return ListTile(
-                      selected: isSelected,
-                      selectedTileColor: BeakTheme.goldLight.withValues(alpha: 0.1),
-                      title: Text(
+                    return Card(
+                      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      color: Color(0xFF161616),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: isSelected ? BorderSide(color: BeakTheme.goldLight.withValues(alpha: 0.5), width: 1) : BorderSide.none,
+                      ),
+                      child: ListTile(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        selected: isSelected,
+                        selectedTileColor: BeakTheme.goldLight.withValues(alpha: 0.1),
+                        title: Text(
                         session.title, 
                         style: TextStyle(
                           color: isSelected ? BeakTheme.goldLight : BeakTheme.secondaryText,
@@ -502,9 +510,9 @@ class ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Color(0xFF111111),
+                color: Color(0xFF161616),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: BeakTheme.secondaryText.withValues(alpha: 0.2)),
+                border: Border.all(color: BeakTheme.goldLight.withValues(alpha: 0.5)),
               ),
               child: TextField(
                 controller: _inputController,

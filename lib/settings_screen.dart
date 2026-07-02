@@ -124,37 +124,63 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: EdgeInsets.all(16),
         children: [
-        SwitchListTile(
-          title: Text('Enable Local HTTP Server', style: TextStyle(color: BeakTheme.primaryText)),
-          subtitle: Text(
-            _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions, /v1/embeddings' : 'Stopped',
-            style: TextStyle(color: BeakTheme.secondaryText)
-          ),
-          value: _serverEnabled,
-          activeColor: BeakTheme.goldLight,
-          onChanged: _toggleServer,
-        ),
-        Divider(color: Colors.grey[800]),
-        ListTile(
-          title: Text('Current Generation Model', style: TextStyle(color: BeakTheme.primaryText)),
-          subtitle: Text(
-            _activeModel.isEmpty || _activeModel == 'None' ? 'None' : _activeModel.split('/').last,
-            style: TextStyle(color: BeakTheme.goldLight)
-          ),
-        ),
-        ListTile(
-          title: Text('Current Embedding Model', style: TextStyle(color: BeakTheme.primaryText)),
-          subtitle: Text(
-            _activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last,
-            style: TextStyle(color: BeakTheme.goldLight)
+        Card(
+          margin: EdgeInsets.only(bottom: 16),
+          color: Color(0xFF161616),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: SwitchListTile(
+              title: Text('Enable Local HTTP Server', style: TextStyle(color: BeakTheme.primaryText)),
+              subtitle: Text(
+                _serverEnabled ? 'Running on port 8080\nEndpoints: /v1/chat/completions, /v1/embeddings' : 'Stopped',
+                style: TextStyle(color: BeakTheme.secondaryText)
+              ),
+              value: _serverEnabled,
+              activeColor: BeakTheme.goldLight,
+              onChanged: _toggleServer,
+            ),
           ),
         ),
-        Divider(color: Colors.grey[800]),
-        ListTile(
-          title: Text('Clear All Local Models', style: TextStyle(color: Colors.redAccent)),
-          subtitle: Text('Deletes all downloaded weights to free up space', style: TextStyle(color: BeakTheme.secondaryText)),
-          trailing: _isClearing ? CircularProgressIndicator(color: Colors.redAccent) : Icon(Icons.delete_forever, color: Colors.redAccent),
-          onTap: _isClearing ? null : _clearAllModels,
+        Card(
+          margin: EdgeInsets.only(bottom: 16),
+          color: Color(0xFF161616),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              children: [
+                ListTile(
+                  title: Text('Current Generation Model', style: TextStyle(color: BeakTheme.primaryText)),
+                  subtitle: Text(
+                    _activeModel.isEmpty || _activeModel == 'None' ? 'None' : _activeModel.split('/').last,
+                    style: TextStyle(color: BeakTheme.goldLight)
+                  ),
+                ),
+                Divider(color: Colors.grey[800], height: 1),
+                ListTile(
+                  title: Text('Current Embedding Model', style: TextStyle(color: BeakTheme.primaryText)),
+                  subtitle: Text(
+                    _activeEmbeddingModel.isEmpty || _activeEmbeddingModel == 'None' ? 'None' : _activeEmbeddingModel.split('/').last,
+                    style: TextStyle(color: BeakTheme.goldLight)
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        Card(
+          color: Color(0xFF161616),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: ListTile(
+              title: Text('Clear All Local Models', style: TextStyle(color: Colors.redAccent)),
+              subtitle: Text('Deletes all downloaded weights to free up space', style: TextStyle(color: BeakTheme.secondaryText)),
+              trailing: _isClearing ? CircularProgressIndicator(color: Colors.redAccent) : Icon(Icons.delete_forever, color: Colors.redAccent),
+              onTap: _isClearing ? null : _clearAllModels,
+            ),
+          ),
         ),
       ],
     ),
