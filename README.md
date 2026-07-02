@@ -82,4 +82,5 @@ curl http://<YOUR_DEVICE_IP>:8080/v1/chat/completions \
 
 1. Beak uses a Foreground Service (`flutter_foreground_task`) to keep the server alive even when the app is backgrounded.
 2. The user must manually enable the HTTP Server in Beak's Settings tab and have actively downloaded an embedding/generation model.
-3. Beak will dynamically route API calls to the currently active model selected in its Catalog. If a requested operation relies on a model type not currently loaded, the API will safely return a descriptive HTTP 400 or 500 error. 
+3. Beak will dynamically route API calls to the currently active model selected in its Catalog. If a requested operation relies on a model type not currently loaded, the API will safely return a descriptive HTTP 400 or 500 error.
+4. **API Robustness & Concurrency**: The local server implements a strict generation lock. Concurrent requests are safely rejected with a `503 Service Unavailable` status rather than crashing the native LiteRT engine. Additionally, system prompts are natively parsed via the Gemma-4 instruction template, and output detokenization correctly handles underlying SentencePiece artifacts.
