@@ -95,11 +95,6 @@ void main() async {
           channelDescription: 'Keeps the local LLM server running',
           channelImportance: NotificationChannelImportance.LOW,
           priority: NotificationPriority.LOW,
-          iconData: const NotificationIconData(
-            resType: ResourceType.mipmap,
-            resPrefix: ResourcePrefix.ic,
-            name: 'launcher',
-          ),
         ),
         iosNotificationOptions: const IOSNotificationOptions(),
         foregroundTaskOptions: ForegroundTaskOptions(

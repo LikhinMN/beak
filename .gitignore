@@ -47,3 +47,4 @@ app.*.map.json
 # Models
 *.litertlm
 *.bin
+.env
