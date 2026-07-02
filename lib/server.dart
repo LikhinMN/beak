@@ -9,28 +9,45 @@ import 'package:shelf_router/shelf_router.dart';
 class LocalLLMServer {
   final int port;
   final String host;
+  final String authToken;
   HttpServer? _server;
   
-  LocalLLMServer({this.port = 8080, this.host = '127.0.0.1'});
+  LocalLLMServer({this.port = 8080, this.host = '127.0.0.1', required this.authToken});
   
   Future<void> start() async {
     final router = Router();
 
     router.post('/v1/chat/completions', (Request request) async {
+      // 1. Basic Auth check
+      final authHeader = request.headers['authorization'];
+      if (authHeader != 'Bearer $authToken') {
+        return Response.forbidden(jsonEncode({"error": {"message": "Invalid or missing Bearer token"}}), headers: {'Content-Type': 'application/json'});
+      }
+
+      Map<String, dynamic> json;
       try {
         final payload = await request.readAsString();
-        final json = jsonDecode(payload) as Map<String, dynamic>;
-        
+        json = jsonDecode(payload) as Map<String, dynamic>;
+      } catch (e) {
+        return Response.badRequest(body: jsonEncode({"error": {"message": "Malformed JSON request body: $e"}}), headers: {'Content-Type': 'application/json'});
+      }
+
+      try {
         final messages = json['messages'] as List<dynamic>? ?? [];
         final stream = json['stream'] == true;
         
         if (messages.isEmpty) {
-          return Response.badRequest(body: '{"error": "Empty messages array"}');
+          return Response.badRequest(body: jsonEncode({"error": {"message": "Empty messages array"}}), headers: {'Content-Type': 'application/json'});
         }
         
         // Get the active model and create a chat session
-        final model = await FlutterGemma.getActiveModel();
-        final chat = await model.createChat();
+        InferenceChat chat;
+        try {
+          final model = await FlutterGemma.getActiveModel();
+          chat = await model.createChat();
+        } catch (e) {
+          return Response.internalServerError(body: jsonEncode({"error": {"message": "Model not loaded or still downloading: $e"}}), headers: {'Content-Type': 'application/json'});
+        }
         
         // Add all previous messages as context
         for (final msg in messages) {
@@ -124,7 +141,8 @@ class LocalLLMServer {
           return Response.ok(jsonEncode(openaiResponse), headers: {'Content-Type': 'application/json'});
         }
       } catch (e) {
-        return Response.internalServerError(body: jsonEncode({"error": {"message": e.toString()}}));
+        // Catch out of memory or other inference errors gracefully
+        return Response.internalServerError(body: jsonEncode({"error": {"message": "Inference error (possibly out of memory): $e"}}), headers: {'Content-Type': 'application/json'});
       }
     });
 
