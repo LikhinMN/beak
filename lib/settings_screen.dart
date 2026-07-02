@@ -118,9 +118,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: EdgeInsets.all(16),
-      children: [
+    return Scaffold(
+      appBar: AppBar(title: const Text('Settings')),
+      body: ListView(
+        padding: EdgeInsets.all(16),
+        children: [
         SwitchListTile(
           title: Text('Enable Local HTTP Server'),
           subtitle: Text(
@@ -146,6 +148,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           onTap: _isClearing ? null : _clearAllModels,
         ),
       ],
+    ),
     );
   }
 }

@@ -266,7 +266,10 @@ class _ModelsScreenState extends State<ModelsScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return Center(child: CircularProgressIndicator());
+      return Scaffold(
+        appBar: AppBar(title: const Text('Catalog')),
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     double totalUsedMB = 0;
@@ -276,8 +279,10 @@ class _ModelsScreenState extends State<ModelsScreen> {
       }
     }
 
-    return Column(
-      children: [
+    return Scaffold(
+      appBar: AppBar(title: const Text('Catalog')),
+      body: Column(
+        children: [
         Container(
           padding: EdgeInsets.all(16),
           color: Colors.grey[200],
@@ -369,6 +374,7 @@ class _ModelsScreenState extends State<ModelsScreen> {
           ),
         ),
       ],
+    ),
     );
   }
 }

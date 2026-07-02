@@ -8,6 +8,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'server.dart';
 import 'models_screen.dart';
 import 'settings_screen.dart';
+import 'chat_screen.dart';
 
 // Global reference to the server
 LocalLLMServer? globalServer;
@@ -134,11 +135,32 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        primaryColor: Colors.white,
+        scaffoldBackgroundColor: Colors.black,
+        cardColor: const Color(0xFF1E1E1E),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.black,
+          elevation: 0,
+          iconTheme: IconThemeData(color: Colors.white),
+        ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.black,
+          selectedItemColor: Colors.white,
+          unselectedItemColor: Colors.grey,
+        ),
+        colorScheme: const ColorScheme.dark(
+          primary: Colors.white,
+          secondary: Colors.grey,
+          surface: Colors.black,
+        ),
+      ),
       home: Scaffold(
-        appBar: AppBar(title: const Text('Gemma Local Server')),
         body: IndexedStack(
           index: _currentIndex,
           children: [
+            ChatScreen(),
             ModelsScreen(),
             SettingsScreen(),
           ],
@@ -147,6 +169,7 @@ class _MyAppState extends State<MyApp> {
           currentIndex: _currentIndex,
           onTap: (index) => setState(() => _currentIndex = index),
           items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat'),
             BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Catalog'),
             BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
           ],
